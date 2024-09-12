@@ -1,6 +1,8 @@
 # nanoRelation_Device
 Leafony STM32
 
+[Leafony Basic Kit 2 購入ページ](https://shop.leafony.com/products/basic-kit-2)
+
 [セットアップ手順](https://docs.leafony.com/docs/environment/stm32/arduino_ide/)
 
 ## 使用リーフ一覧
