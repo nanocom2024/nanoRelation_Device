@@ -8,3 +8,11 @@ Leafony STM32
 - AV01 CR2032
 - AZ01 USB
 - AC02 BLE Sugar
+
+## 使用ライブラリ
+- [TBGLib.h](https://github.com/Leafony/TBGLib)
+- [STM32LowPower.h](https://github.com/stm32duino/STM32LowPower)
+- [STM32RTC.h](https://github.com/stm32duino/STM32RTC/tree/1.2.0)
+  - version == 1.2.0
+- [Arduino_Core_STM32](https://github.com/stm32duino/Arduino_Core_STM32)
+  - version >= 1.3.0
