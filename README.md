@@ -14,5 +14,6 @@ Leafony STM32
 ## 使用ライブラリ
 - [TBGLib.h](https://github.com/Leafony/TBGLib)
 - [STM32LowPower.h](https://github.com/stm32duino/STM32LowPower)
+  - version == 1.1.1
 - [STM32RTC.h](https://github.com/stm32duino/STM32RTC/tree/1.2.0)
   - version == 1.2.0
