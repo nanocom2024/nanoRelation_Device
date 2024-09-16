@@ -87,6 +87,21 @@ void setupBLE()
   while (ble112.checkActivity(1000));
 }
 
+void uuidToBytes(const char* uuid, uint8_t* bytes)
+{
+  int len = strlen(uuid);
+  int j = 0;
+
+  for (int i = 0; i < len; i++)
+  {
+    if (uuid[i] == '-') continue;
+
+    char byte_str[3] = { uuid[i], uuid[i+1], 0 };
+    bytes[j++] = strtol(byte_str, NULL, 16);
+    i++;
+  }
+}
+
 //-----------------------------------------------
 // アドバタイズするデータの設定
 //-----------------------------------------------
@@ -95,38 +110,38 @@ void StartAdvData()
   // Advertising data; 25byte MAX
   uint8_t adv_data[] = {
     // AD Structure 1: Flag
-    (2),  //0: field length
-    BGLIB_GAP_AD_TYPE_FLAGS,  //1: field type (0x01)
-    (6),  //2: data
+    (2),  // 0: field length
+    BGLIB_GAP_AD_TYPE_FLAGS,  // 1: field type (0x01)
+    (6),  // 2: data
     // AD Structure 2: Complete local name
-    (26),  //3: field length 0x1A
-    (255),  //4: field type (0xFF)
-    (76),  //5: company ID[0] 0x4C
-    (0),  //6: company ID[1] 0x00
-    (2),  //7: Beacon Type[0] 0x02
-    (21),  //8: Beacon Type[1] 0x15
-    (206),  //9: Proximity UUID[0] 0xCE
-    (40),  //10: Proximity UUID[1] 28
-    (206),   //11: 0xCE
-    (128), //12: 0x80
-    (144),  //13: 0x90
-    (112),  //14: 0x70
-    (71),  //15: 0x47
-    (132),  //16: 0x84
-    (174),  //17: 0xAE
-    (101),  //18: 0x65
-    (229),  //19: 0xE5
-    (59),  //20: 0x3B
-    (172),  //21: 0xAC
-    (153),  //22: 0x99
-    (232),  //23: 0xE8
-    (75),  //24: 0x4B
-    (0),  //25: Major[0]
-    (0),  //26: Major[1]
-    (0),  //27: Minor[0]
-    (0),  //28: Minor[1]
-    (60),  //29: Meadured Power
-  };
+    (26),  // 3: field length 0x1A
+    (255),  // 4: field type (0xFF)
+    (76),  // 5: company ID[0] 0x4C
+    (0),   // 6: company ID[1] 0x00
+    (2),   // 7: Beacon Type[0] 0x02
+    (21),  // 8: Beacon Type[1] 0x15
+};
+
+  // UUID部分を追加
+  uint8_t uuid_bytes[16];
+  char* uuid_str = BEACON_UUID;
+  uuidToBytes(uuid_str, uuid_bytes);
+  for (int i = 0; i < 16; i++) {
+    adv_data[9 + i] = uuid_bytes[i];
+  }
+
+  // 残りのデータ
+  // MajorとMinorを設定
+  uint16_t major = BEACON_MAJOR;
+  uint16_t minor = BEACON_MINOR;
+
+  adv_data[25] = (major >> 8) & 0xFF; //Major[0]
+  adv_data[26] = major & 0xFF; //Major[1]
+  adv_data[27] = (minor >> 8) & 0xFF; //Minor[0]
+  adv_data[28] = minor & 0xFF; //Minor[1]
+
+  adv_data[29] = 60; // Measured Power
+
   // Register advertising packet
   uint8_t stLen = sizeof(adv_data);
   ble112.ble_cmd_le_gap_set_adv_data(SCAN_RSP_ADVERTISING_PACKETS, stLen, adv_data);
