@@ -2,11 +2,6 @@
 #include "TBGLib.h"
 
 //=====================================================================
-// シリアルコンソールへのデバック出力
-//=====================================================================
-#define DEBUG
-
-//=====================================================================
 // スリープ時間、送信時間の設定
 //  SLEEP_INTERVAL : スリープ時間 (秒)
 //  WAKE_INTERVAL：パケット送信時間 (秒)
@@ -147,7 +142,7 @@ void StartAdvData() {
     (minor >> 8) & 0xFF,
     minor & 0xFF,
 
-    (60)  // Measured Power
+    (-65)  // Measured Power
   };
 
 
@@ -204,32 +199,22 @@ void setup() {
 //---------------------------------------
 void loop() {
   StartAdvData();
-#ifdef DEBUG
+
   Serial.println(F("Start advertise"));
   Serial.flush();
-#endif
+
   // Continue Advertising (during that STM32 sleeps.)
   LowPower.deepSleep(WAKE_INTERVAL * 1000);
-#ifdef DEBUG
   Serial.println(F("Sleep BLE"));
-#endif
   sleepBLE();
-#ifdef DEBUG
   Serial.println(F("Sleep STM32"));
   Serial.println(F(">>> Sleep >>>"));
   Serial.flush();
-#endif
   LowPower.deepSleep(SLEEP_INTERVAL * 1000);
-#ifdef DEBUG
   Serial.println(F("Wakeup STM32"));
-#endif
   wakeupBLE();
-#ifdef DEBUG
   Serial.println(F("Wakeup BLE"));
-#endif
-#ifdef DEBUG
   Serial.println(F("<<< Wake up <<<"));
-#endif
 }
 
 // ================================================================
@@ -253,41 +238,36 @@ void my_evt_le_connection_opend(const ble_msg_le_connection_opend_evt_t *msg) {}
 void my_evt_le_connection_closed(const struct ble_msg_le_connection_closed_evt_t *msg) {}
 // called when the system booted
 void my_evt_system_boot(const ble_msg_system_boot_evt_t *msg) {
-  #ifdef DEBUG
-    Serial.print("###\tsystem_boot: { ");
-    Serial.print("major: ");
-    Serial.print(msg->major, HEX);
-    Serial.print(", minor: ");
-    Serial.print(msg->minor, HEX);
-    Serial.print(", patch: ");
-    Serial.print(msg->patch, HEX);
-    Serial.print(", build: ");
-    Serial.print(msg->build, HEX);
-    Serial.print(", bootloader_version: ");
-    Serial.print(msg->bootloader, HEX);
-    Serial.print(", hw: ");
-    Serial.print(msg->hw, HEX);
-    Serial.println(" }");
-  #endif
+  Serial.print("###\tsystem_boot: { ");
+  Serial.print("major: ");
+  Serial.print(msg->major, HEX);
+  Serial.print(", minor: ");
+  Serial.print(msg->minor, HEX);
+  Serial.print(", patch: ");
+  Serial.print(msg->patch, HEX);
+  Serial.print(", build: ");
+  Serial.print(msg->build, HEX);
+  Serial.print(", bootloader_version: ");
+  Serial.print(msg->bootloader, HEX);
+  Serial.print(", hw: ");
+  Serial.print(msg->hw, HEX);
+  Serial.println(" }");
+
   bSystemBootBle = true;
 }
 // called when the system awake
 void my_evt_system_awake(void) {
-  #ifdef DEBUG
-    Serial.println("###\tsystem_awake");
-  #endif
+  Serial.println("###\tsystem_awake");
 }
 //
 void my_rsp_system_get_bt_address(const struct ble_msg_system_get_bt_address_rsp_t *msg) {
-  #ifdef DEBUG
-    Serial.print("###\tsystem_get_bt_address: { ");
-    Serial.print("address: ");
-    for (int i = 0; i < 6; i++)
-    {
-      Serial.print(msg->address.addr[i], HEX);
-    }
-    Serial.println(" }");
-  #endif
+  Serial.print("###\tsystem_get_bt_address: { ");
+  Serial.print("address: ");
+  for (int i = 0; i < 6; i++) {
+    Serial.print(msg->address.addr[i], HEX);
+  }
+  Serial.println(" }");
+
   unsigned short addr = 0;
   char cAddr[30];
   addr = msg->address.addr[0] + (msg->address.addr[1] * 0x100);
