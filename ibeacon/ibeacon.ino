@@ -25,6 +25,10 @@
 #define INT_0 PC7       // INT0
 #define INT_1 PB3       // INT1
 
+#define BEACON_UUID "E2C56DB5-DFFB-48D2-B060-D0F5A71096E0"
+#define BEACON_MAJOR 1000
+#define BEACON_MINOR 2000
+
 //=====================================================================
 // objects
 //=====================================================================
