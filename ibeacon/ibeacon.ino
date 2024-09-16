@@ -25,7 +25,7 @@
 #define INT_0 PC7       // INT0
 #define INT_1 PB3       // INT1
 
-#define BEACON_UUID "E2C56DB5-DFFB-48D2-B060-D0F5A71096E0"
+#define BEACON_UUID "e2c56db5-dffb-48d2-b060-d0f5a71096e0"
 #define BEACON_MAJOR 1000
 #define BEACON_MINOR 2000
 
@@ -107,6 +107,15 @@ void uuidToBytes(const char* uuid, uint8_t* bytes)
 //-----------------------------------------------
 void StartAdvData()
 {
+  // UUIDをstrからbyteに変換
+  uint8_t uuid_bytes[16];
+  char* uuid_str = BEACON_UUID;
+  uuidToBytes(uuid_str, uuid_bytes);
+
+  // MajorとMinorを設定
+  uint16_t major = BEACON_MAJOR;
+  uint16_t minor = BEACON_MINOR;
+
   // Advertising data; 25byte MAX
   uint8_t adv_data[] = {
     // AD Structure 1: Flag
@@ -120,27 +129,36 @@ void StartAdvData()
     (0),   // 6: company ID[1] 0x00
     (2),   // 7: Beacon Type[0] 0x02
     (21),  // 8: Beacon Type[1] 0x15
-};
 
-  // UUID部分を追加
-  uint8_t uuid_bytes[16];
-  char* uuid_str = BEACON_UUID;
-  uuidToBytes(uuid_str, uuid_bytes);
-  for (int i = 0; i < 16; i++) {
-    adv_data[9 + i] = uuid_bytes[i];
-  }
+    // UUID
+    uuid_bytes[0], 
+    uuid_bytes[1],
+    uuid_bytes[2],
+    uuid_bytes[3],
+    uuid_bytes[4],
+    uuid_bytes[5],
+    uuid_bytes[6],
+    uuid_bytes[7],
+    uuid_bytes[8],
+    uuid_bytes[9],
+    uuid_bytes[10],
+    uuid_bytes[11],
+    uuid_bytes[12],
+    uuid_bytes[13],
+    uuid_bytes[14],
+    uuid_bytes[15],
 
-  // 残りのデータ
-  // MajorとMinorを設定
-  uint16_t major = BEACON_MAJOR;
-  uint16_t minor = BEACON_MINOR;
+    // Major
+    (major >> 8) & 0xFF,
+    major & 0xFF,
 
-  adv_data[25] = (major >> 8) & 0xFF; //Major[0]
-  adv_data[26] = major & 0xFF; //Major[1]
-  adv_data[27] = (minor >> 8) & 0xFF; //Minor[0]
-  adv_data[28] = minor & 0xFF; //Minor[1]
+    // Minor
+    (minor >> 8) & 0xFF,
+    minor & 0xFF,
 
-  adv_data[29] = 60; // Measured Power
+    (60)  // Measured Power
+  };
+
 
   // Register advertising packet
   uint8_t stLen = sizeof(adv_data);
