@@ -3,7 +3,9 @@ Leafony STM32
 
 [Leafony Basic Kit 2 購入ページ](https://shop.leafony.com/products/basic-kit-2)
 
-[セットアップ手順](https://docs.leafony.com/docs/environment/stm32/arduino_ide/)
+[セットアップ手順 Leafony STM32](https://docs.leafony.com/docs/environment/stm32/arduino_ide/)
+
+[STM32CubeProg(書き込みに必要)](https://www.st.com/en/development-tools/stm32cubeprog.html#get-software)
 
 ## 使用リーフ一覧
 - AP03 STM32 MCU
