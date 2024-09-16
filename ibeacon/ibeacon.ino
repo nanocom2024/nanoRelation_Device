@@ -3,15 +3,13 @@
 
 //=====================================================================
 // シリアルコンソールへのデバック出力
-//      #define DEBUG = 出力あり
-//　　//#define DEBUG = 出力なし（コメントアウトする）
 //=====================================================================
 #define DEBUG
 
 //=====================================================================
 // スリープ時間、送信時間の設定
 //  SLEEP_INTERVAL : スリープ時間 (秒)
-//  WAKE_INTERVAL　：パケット送信時間 (秒)
+//  WAKE_INTERVAL：パケット送信時間 (秒)
 //=====================================================================
 #define SLEEP_INTERVAL (3)
 #define WAKE_INTERVAL  (5)
@@ -46,8 +44,7 @@ volatile bool bSystemBootBle = false;
 // IOピンの入出力設定
 // 接続するリーフに合わせて設定する
 //=====================================================================
-void setupPort()
-{
+void setupPort() {
   pinMode(BLE_WAKEUP, OUTPUT);    // BLE Wakeup/Sleep
   digitalWrite(BLE_WAKEUP, HIGH); // BLE Wakeup
 }
@@ -55,8 +52,7 @@ void setupPort()
 //-----------------------------------------------
 // BLE
 //-----------------------------------------------
-void setupBLE()
-{
+void setupBLE() {
   // set up internal status handlers
   ble112.onBusy = onBusy;
   ble112.onIdle = onIdle;
@@ -70,13 +66,11 @@ void setupBLE()
   ble112.ble_rsp_system_get_bt_address = my_rsp_system_get_bt_address;
   uint8_t tm = 0;
   Serialble.begin(9600);
-  while (!Serialble && tm < 150)
-  { // Serial起動待ち タイムアウト1.5s
+  while (!Serialble && tm < 150) { // Serial起動待ち タイムアウト1.5s
     tm++;
     delay(10);
   }
-  while (!bSystemBootBle)
-  { // BLE起動待ち
+  while (!bSystemBootBle) { // BLE起動待ち
     ble112.checkActivity(100);
   }
   ble112.ble_cmd_system_get_bt_address();
@@ -87,13 +81,11 @@ void setupBLE()
   while (ble112.checkActivity(1000));
 }
 
-void uuidToBytes(const char* uuid, uint8_t* bytes)
-{
+void uuidToBytes(const char* uuid, uint8_t* bytes) {
   int len = strlen(uuid);
   int j = 0;
 
-  for (int i = 0; i < len; i++)
-  {
+  for (int i = 0; i < len; i++) {
     if (uuid[i] == '-') continue;
 
     char byte_str[3] = { uuid[i], uuid[i+1], 0 };
@@ -105,8 +97,7 @@ void uuidToBytes(const char* uuid, uint8_t* bytes)
 //-----------------------------------------------
 // アドバタイズするデータの設定
 //-----------------------------------------------
-void StartAdvData()
-{
+void StartAdvData() {
   // UUIDをstrからbyteに変換
   uint8_t uuid_bytes[16];
   char* uuid_str = BEACON_UUID;
@@ -173,8 +164,7 @@ void StartAdvData()
 // sleep BLE
 // BLE リーフをスリープさせる
 //---------------------------------------
-void sleepBLE()
-{
+void sleepBLE() {
   ble112.ble_cmd_le_gap_stop_advertising(0);
   while (ble112.checkActivity());
   ble112.ble_cmd_system_halt(1);
@@ -187,8 +177,7 @@ void sleepBLE()
 // wakeup BLE
 // BLEリーフをスリープから復帰させる
 //---------------------------------------
-void wakeupBLE()
-{
+void wakeupBLE() {
   digitalWrite(BLE_WAKEUP, HIGH);
   delay(500);
   ble112.ble_cmd_system_halt(0);
@@ -201,8 +190,7 @@ void wakeupBLE()
 // setup
 //
 //---------------------------------------
-void setup()
-{
+void setup() {
   Serial.begin(115200);
   LowPower.begin(); // Configure low power
   setupPort();
@@ -214,8 +202,7 @@ void setup()
 // loop
 //
 //---------------------------------------
-void loop()
-{
+void loop() {
   StartAdvData();
 #ifdef DEBUG
   Serial.println(F("Start advertise"));
@@ -249,77 +236,58 @@ void loop()
 // INTERNAL BGLIB CLASS CALLBACK FUNCTIONS
 // ================================================================
 // called when the module begins sending a command
-void onBusy()
-{
-}
+void onBusy() {}
 // called when the module receives a complete response or "system_boot" event
-void onIdle()
-{
-}
+void onIdle() {}
 // called when the parser does not read the expected response in the specified time limit
-void onTimeout()
-{
-}
+void onTimeout() {}
 // called immediately before beginning UART TX of a command
-void onBeforeTXCommand()
-{
-}
+void onBeforeTXCommand() {}
 // called immediately after finishing UART TX
-void onTXCommandComplete()
-{
-}
+void onTXCommandComplete() {}
 // called when the attribute value changed
-void my_evt_gatt_server_attribute_value(const struct ble_msg_gatt_server_attribute_value_evt_t *msg)
-{
-}
+void my_evt_gatt_server_attribute_value(const struct ble_msg_gatt_server_attribute_value_evt_t *msg) {}
 // called when the connection is opened
-void my_evt_le_connection_opend(const ble_msg_le_connection_opend_evt_t *msg)
-{
-}
+void my_evt_le_connection_opend(const ble_msg_le_connection_opend_evt_t *msg) {}
 // called when connection is closed
-void my_evt_le_connection_closed(const struct ble_msg_le_connection_closed_evt_t *msg)
-{
-}
+void my_evt_le_connection_closed(const struct ble_msg_le_connection_closed_evt_t *msg) {}
 // called when the system booted
-void my_evt_system_boot(const ble_msg_system_boot_evt_t *msg)
-{
-#ifdef DEBUG
-  Serial.print("###\tsystem_boot: { ");
-  Serial.print("major: ");
-  Serial.print(msg->major, HEX);
-  Serial.print(", minor: ");
-  Serial.print(msg->minor, HEX);
-  Serial.print(", patch: ");
-  Serial.print(msg->patch, HEX);
-  Serial.print(", build: ");
-  Serial.print(msg->build, HEX);
-  Serial.print(", bootloader_version: ");
-  Serial.print(msg->bootloader, HEX);
-  Serial.print(", hw: ");
-  Serial.print(msg->hw, HEX);
-  Serial.println(" }");
-#endif
+void my_evt_system_boot(const ble_msg_system_boot_evt_t *msg) {
+  #ifdef DEBUG
+    Serial.print("###\tsystem_boot: { ");
+    Serial.print("major: ");
+    Serial.print(msg->major, HEX);
+    Serial.print(", minor: ");
+    Serial.print(msg->minor, HEX);
+    Serial.print(", patch: ");
+    Serial.print(msg->patch, HEX);
+    Serial.print(", build: ");
+    Serial.print(msg->build, HEX);
+    Serial.print(", bootloader_version: ");
+    Serial.print(msg->bootloader, HEX);
+    Serial.print(", hw: ");
+    Serial.print(msg->hw, HEX);
+    Serial.println(" }");
+  #endif
   bSystemBootBle = true;
 }
 // called when the system awake
-void my_evt_system_awake(void)
-{
-#ifdef DEBUG
-  Serial.println("###\tsystem_awake");
-#endif
+void my_evt_system_awake(void) {
+  #ifdef DEBUG
+    Serial.println("###\tsystem_awake");
+  #endif
 }
 //
-void my_rsp_system_get_bt_address(const struct ble_msg_system_get_bt_address_rsp_t *msg)
-{
-#ifdef DEBUG
-  Serial.print("###\tsystem_get_bt_address: { ");
-  Serial.print("address: ");
-  for (int i = 0; i < 6; i++)
-  {
-    Serial.print(msg->address.addr[i], HEX);
-  }
-  Serial.println(" }");
-#endif
+void my_rsp_system_get_bt_address(const struct ble_msg_system_get_bt_address_rsp_t *msg) {
+  #ifdef DEBUG
+    Serial.print("###\tsystem_get_bt_address: { ");
+    Serial.print("address: ");
+    for (int i = 0; i < 6; i++)
+    {
+      Serial.print(msg->address.addr[i], HEX);
+    }
+    Serial.println(" }");
+  #endif
   unsigned short addr = 0;
   char cAddr[30];
   addr = msg->address.addr[0] + (msg->address.addr[1] * 0x100);
