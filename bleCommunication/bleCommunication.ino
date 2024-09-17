@@ -249,6 +249,19 @@ void intTimer(void){                  // STM32 Core 1.9.0
 }
 
 
+void uuidToBytes(const char* uuid, uint8_t* bytes) {
+  int len = strlen(uuid);
+  int j = 0;
+
+  for (int i = 0; i < len; i++) {
+    if (uuid[i] == '-') continue;
+
+    char byte_str[3] = { uuid[i], uuid[i+1], 0 };
+    bytes[j++] = strtol(byte_str, NULL, 16);
+    i++;
+  }
+}
+
 //=====================================================================
 // BLE
 //=====================================================================
@@ -301,60 +314,19 @@ void setupBLE(){
         (2),                                                    // field length
         BGLIB_GAP_AD_TYPE_FLAGS,                                // field type (0x01)
         (6),                                                    // data(0x06: LE General Discoverable Mode | BR/EDR Not Supported)
-        // (1),                                                    // field length (1は仮の初期値)
-        // BGLIB_GAP_AD_TYPE_LOCALNAME_COMPLETE                    // field type (0x09)
+        (1),                                                    // field length (1は仮の初期値)
+        BGLIB_GAP_AD_TYPE_LOCALNAME_COMPLETE                    // field type (0x09)
     };
 
-    /*  */
-    // size_t lenStr2 = strDeviceName.length();
+    size_t lenStr2 = strDeviceName.length();
 
-    // ad_data[3] = (lenStr2 + 1);                                 // field length
-    // uint8 u8Index;
-    // for( u8Index=0; u8Index < lenStr2; u8Index++){
-    //   ad_data[5 + u8Index] = strDeviceName.charAt(u8Index);
-    // }
+    ad_data[3] = (lenStr2 + 1);                                 // field length
+    uint8 u8Index;
+    for( u8Index=0; u8Index < lenStr2; u8Index++){
+      ad_data[5 + u8Index] = strDeviceName.charAt(u8Index);
+    }
 
-    // /*   */
-    // stLen = (5 + lenStr2);
-
-    stLen = 3;
-
-    ad_data[stLen] = (17);
-    stLen++;
-    ad_data[stLen] = 0x07;
-    stLen++;
-    ad_data[stLen] = 0xAA;
-    stLen++;
-    ad_data[stLen] = 0xAA;
-    stLen++;
-    ad_data[stLen] = 0xAA;
-    stLen++;
-    ad_data[stLen] = 0xAA;
-    stLen++;
-    ad_data[stLen] = 0x88;
-    stLen++;
-    ad_data[stLen] = 0x83;
-    stLen++;
-    ad_data[stLen] = 0x49;
-    stLen++;
-    ad_data[stLen] = 0xA8;
-    stLen++;
-    ad_data[stLen] = 0x8B;
-    stLen++;
-    ad_data[stLen] = 0xDB;
-    stLen++;
-    ad_data[stLen] = 0x42;
-    stLen++;
-    ad_data[stLen] = 0xBC;
-    stLen++;
-    ad_data[stLen] = 0x1A;
-    stLen++;
-    ad_data[stLen] = 0x71;
-    stLen++;
-    ad_data[stLen] = 0x07;
-    stLen++;
-    ad_data[stLen] = 0xF4;
-    stLen++;
+    stLen = (5 + lenStr2);
 
     // Serial.println(stLen);
     // for(int i = 0; i < 52; i++) Serial.printf("%2c ",ad_data[i]);
@@ -367,6 +339,13 @@ void setupBLE(){
 
     while (ble112.checkActivity(1000));                         /* Receive check */
     delay(20);
+
+    uint8_t uuid_bytes[16];
+    char* uuid_str = SERVICE_UUID;
+    uuidToBytes(uuid_str, uuid_bytes);
+
+    ble112.ble_cmd_le_gap_set_data_channel_classification(16, uuid_bytes);
+    while (ble112.checkActivity(1000));
 
     /* interval_min :   40ms( =   64 x 0.625ms ) */
     //ble112.ble_cmd_le_gap_bt5_set_adv_parameters( 0, 64, 1600, 7, 0 );/* [BGLIB] <handle> <interval_min> <interval_max> <channel_map> <report_scan>*/
