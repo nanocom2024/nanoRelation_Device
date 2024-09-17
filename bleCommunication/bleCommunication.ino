@@ -1,30 +1,11 @@
-//=====================================================================
-//  Leafony Platform sample sketch
-//     Application  : BLE 4-Sensers demo
-//     Processor    : STM32L452RE (Nucleo-64/Nucleo L452RE)
-//     Arduino IDE  : 1.8.13
-//     STM32 Core   : Ver1.9.0
-//
-//     Leaf configuration
-//       (1) AC02 BLE Sugar
-//       (2) AI01 4-Sensors
-//       (3) AP03 STM32 MCU
-//       (4) AZ01 USB
-//
-//    (c) 2021 LEAFONY SYSTEMS Co., Ltd
-//    Released under the MIT license
-//    https://opensource.org/licenses/MIT
-//
-//      Rev.00 2021/04/01 First release
-//=====================================================================
-//---------------------------------------------------------------------
-// difinition
-//---------------------------------------------------------------------
 #include <SoftwareSerial.h>                 // Software UART
 #include "TBGLib.h"                         // BLE
 
 #define SERIAL_MONITOR
 #define DEBUG
+
+#define SERVICE_UUID "AAAAAAAA-8883-49A8-8BDB-42BC1A7107F4"
+#define CHARACTERISTIC_UUID "BBBBBBBB-201F-44EB-82E8-10CC02AD8CE1"
 
 
 //===============================================
@@ -316,25 +297,70 @@ void setupBLE(){
 
     /* setting */
     /* [set Advertising Data] */
-    uint8 ad_data[21] = {
+    uint8 ad_data[52] = {
         (2),                                                    // field length
         BGLIB_GAP_AD_TYPE_FLAGS,                                // field type (0x01)
-        (6),                                                    // data
-        (1),                                                    // field length (1は仮の初期値)
-        BGLIB_GAP_AD_TYPE_LOCALNAME_COMPLETE                    // field type (0x09)
+        (6),                                                    // data(0x06: LE General Discoverable Mode | BR/EDR Not Supported)
+        // (1),                                                    // field length (1は仮の初期値)
+        // BGLIB_GAP_AD_TYPE_LOCALNAME_COMPLETE                    // field type (0x09)
     };
 
     /*  */
-    size_t lenStr2 = strDeviceName.length();
+    // size_t lenStr2 = strDeviceName.length();
 
-    ad_data[3] = (lenStr2 + 1);                                 // field length
-    uint8 u8Index;
-    for( u8Index=0; u8Index < lenStr2; u8Index++){
-      ad_data[5 + u8Index] = strDeviceName.charAt(u8Index);
-    }
+    // ad_data[3] = (lenStr2 + 1);                                 // field length
+    // uint8 u8Index;
+    // for( u8Index=0; u8Index < lenStr2; u8Index++){
+    //   ad_data[5 + u8Index] = strDeviceName.charAt(u8Index);
+    // }
 
-    /*   */
-    stLen = (5 + lenStr2);
+    // /*   */
+    // stLen = (5 + lenStr2);
+
+    stLen = 3;
+
+    ad_data[stLen] = (17);
+    stLen++;
+    ad_data[stLen] = 0x07;
+    stLen++;
+    ad_data[stLen] = 0xAA;
+    stLen++;
+    ad_data[stLen] = 0xAA;
+    stLen++;
+    ad_data[stLen] = 0xAA;
+    stLen++;
+    ad_data[stLen] = 0xAA;
+    stLen++;
+    ad_data[stLen] = 0x88;
+    stLen++;
+    ad_data[stLen] = 0x83;
+    stLen++;
+    ad_data[stLen] = 0x49;
+    stLen++;
+    ad_data[stLen] = 0xA8;
+    stLen++;
+    ad_data[stLen] = 0x8B;
+    stLen++;
+    ad_data[stLen] = 0xDB;
+    stLen++;
+    ad_data[stLen] = 0x42;
+    stLen++;
+    ad_data[stLen] = 0xBC;
+    stLen++;
+    ad_data[stLen] = 0x1A;
+    stLen++;
+    ad_data[stLen] = 0x71;
+    stLen++;
+    ad_data[stLen] = 0x07;
+    stLen++;
+    ad_data[stLen] = 0xF4;
+    stLen++;
+
+    // Serial.println(stLen);
+    // for(int i = 0; i < 52; i++) Serial.printf("%2c ",ad_data[i]);
+    // Serial.print("\n");
+    // for(int i = 0; i < 52; i++) Serial.printf("%2x ",ad_data[i]);
+    // Serial.print("\n");
 
     //ble112.ble_cmd_le_gap_bt5_set_adv_data(0,SCAN_RSP_ADVERTISING_PACKETS, stLen, ad_data);
     ble112.ble_cmd_le_gap_set_adv_data(SCAN_RSP_ADVERTISING_PACKETS, stLen, ad_data);
