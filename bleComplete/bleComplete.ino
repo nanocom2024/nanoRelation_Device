@@ -1,37 +1,23 @@
-//=====================================================================
-//  Leafony Platform sample sketch
-//     Application  : BLE 4-Sensers demo
-//     Processor    : STM32L452RE (Nucleo-64/Nucleo L452RE)
-//     Arduino IDE  : 1.8.13
-//     STM32 Core   : Ver1.9.0
-//
-//     Leaf configuration
-//       (1) AC02 BLE Sugar
-//       (2) AI01 4-Sensors
-//       (3) AP03 STM32 MCU
-//       (4) AZ01 USB
-//
-//    (c) 2021 LEAFONY SYSTEMS Co., Ltd
-//    Released under the MIT license
-//    https://opensource.org/licenses/MIT
-//
-//      Rev.00 2021/04/01 First release
-//=====================================================================
-//---------------------------------------------------------------------
-// difinition
-//---------------------------------------------------------------------
 #include "TBGLib.h"         // BLE
 #include <SoftwareSerial.h> // Software UART
+#include "STM32LowPower.h"
 
 #define SERIAL_MONITOR
 #define DEBUG
 
-//===============================================
-// BLE Unique Name (Local device name)
-// Up to 16 characters (ASCII code)
-//===============================================
-//                     |1234567890123456|
+// スリープ時間と送信時間
+#define SLEEP_INTERVAL (3)
+#define WAKE_INTERVAL  (5)
+
+// BLEでアドバタイズするデバイス名
 String strDeviceName = "Leafony_Dayo";
+
+// iBeaconのUUID、Major、Minor
+#define BEACON_UUID "e2c56db5-dffb-48d2-b060-d0f5a71096e0"
+#define BEACON_MAJOR 1000
+#define BEACON_MINOR 2000
+
+volatile bool ibeacon = false;
 
 //-----------------------------------------------
 // Setting the transmission interval
@@ -40,13 +26,12 @@ String strDeviceName = "Leafony_Dayo";
 //-----------------------------------------------
 #define SEND_INTERVAL (1) // 1s
 
-//-----------------------------------------------
-// IO pin name definition
-// Define it according to the leaf to be connected.
-//-----------------------------------------------
+// IOピンの名前定義
 #define BLE_WAKEUP PB12 // D7   PB12
 #define BLE_RX PA1      // [A2] PA1
 #define BLE_TX PA0      // [A1] PA0
+#define INT_0 PC7       // INT0
+#define INT_1 PB3       // INT1
 
 //------------------------------
 // Loop interval
@@ -54,9 +39,7 @@ String strDeviceName = "Leafony_Dayo";
 //------------------------------
 #define LOOP_INTERVAL 125000 // 125000us = 125ms interval
 
-//------------------------------
-// BLE
-//------------------------------
+// BLE state
 #define BLE_STATE_STANDBY (0)
 #define BLE_STATE_SCANNING (1)
 #define BLE_STATE_ADVERTISING (2)
@@ -64,25 +47,10 @@ String strDeviceName = "Leafony_Dayo";
 #define BLE_STATE_CONNECTED_MASTER (4)
 #define BLE_STATE_CONNECTED_SLAVE (5)
 
-//---------------------------------------------------------------------
-// object
-//---------------------------------------------------------------------
-//------------------------------
-
-//------------------------------
 // BLE
-//------------------------------
 HardwareSerial Serialble(BLE_RX, BLE_TX);
 BGLib ble112((HardwareSerial *)&Serialble, 0, 0);
 
-//---------------------------------------------------------------------
-// Define variables to be used in the program
-//---------------------------------------------------------------------
-//------------------------------
-
-//------------------------------
-// Loop counter
-//------------------------------
 uint8_t iLoop1s = 0;
 uint8_t iSendCounter = 0;
 
@@ -135,6 +103,13 @@ volatile uint8_t ble_bonding =
 //------------------------------
 float dataBatt = 0;
 
+// IOピンの入出力設定
+// 接続するリーフに合わせて設定する
+void setupPort() {
+  pinMode(BLE_WAKEUP, OUTPUT);    // BLE Wakeup/Sleep
+  digitalWrite(BLE_WAKEUP, HIGH); // BLE Wakeup
+}
+
 //=====================================================================
 // setup
 //=====================================================================
@@ -148,6 +123,7 @@ void setup() {
     Serial.println(F("setup start"));
 #endif
 
+    LowPower.begin();
     setupPort();
     setupBLE();
 
@@ -163,15 +139,6 @@ void setup() {
     Serial.println(F("loop start"));
     Serial.println(F(""));
 #endif
-}
-
-//-----------------------------------------------
-// IO pin input/output settings
-// Configure the settings according to the leaf to be connected.
-//-----------------------------------------------
-void setupPort() {
-    pinMode(BLE_WAKEUP, OUTPUT);    // [D7] : BLE Wakeup/Sleep
-    digitalWrite(BLE_WAKEUP, HIGH); // BLE Wakeup
 }
 
 //=====================================================================
@@ -203,20 +170,41 @@ void loop() {
     //-----------------------------------------------------
     // Timer interval Loop once in 125ms
     //-----------------------------------------------------
-    if (bInterval == true) {
-        bInterval = false;
+    if(ibeacon){
+        StartiBeaconAdvData();
 
-        //--------------------------------------------
-        loopCounter(); // loop counter
-        //--------------------------------------------
-        // Run once in 1s
-        //--------------------------------------------
-        if (event1s == true) {
-            event1s = false;
-            bt_sendData(); // Data send
-        }
+        Serial.println(F("Start advertise"));
+        Serial.flush();
+
+        // Continue Advertising (during that STM32 sleeps.)
+        LowPower.deepSleep(WAKE_INTERVAL * 1000);
+        Serial.println(F("Sleep BLE"));
+        sleepBLE();
+        Serial.println(F("Sleep STM32"));
+        Serial.println(F(">>> Sleep >>>"));
+        Serial.flush();
+        LowPower.deepSleep(SLEEP_INTERVAL * 1000);
+        Serial.println(F("Wakeup STM32"));
+        wakeupBLE();
+        Serial.println(F("Wakeup BLE"));
+        Serial.println(F("<<< Wake up <<<"));
     }
-    loopBleRcv();
+    else{
+        if (bInterval == true) {
+            bInterval = false;
+
+            //--------------------------------------------
+            loopCounter(); // loop counter
+            //--------------------------------------------
+            // Run once in 1s
+            //--------------------------------------------
+            if (event1s == true) {
+                event1s = false;
+                bt_sendData(); // Data send
+            }
+        }
+        loopBleRcv();
+    }
 }
 //---------------------------------------------------------------------
 // Counter
@@ -392,6 +380,103 @@ void loopBleRcv(void) {
         /*  */
         bBLEconnect = true; /* [BLE] connection state */
     }
+}
+
+void uuidToBytes(const char* uuid, uint8_t* bytes) {
+    int len = strlen(uuid);
+    int j = 0;
+
+    for (int i = 0; i < len; i++) {
+        if (uuid[i] == '-') continue;
+
+        char byte_str[3] = { uuid[i], uuid[i+1], 0 };
+        bytes[j++] = strtol(byte_str, NULL, 16);
+        i++;
+    }
+}
+
+//-----------------------------------------------
+// アドバタイズするデータの設定
+//-----------------------------------------------
+void StartiBeaconAdvData() {
+    // UUIDをstrからbyteに変換
+    uint8_t uuid_bytes[16];
+    char* uuid_str = BEACON_UUID;
+    uuidToBytes(uuid_str, uuid_bytes);
+
+    // MajorとMinorを設定
+    uint16_t major = BEACON_MAJOR;
+    uint16_t minor = BEACON_MINOR;
+
+    // Advertising data; 25byte MAX
+    uint8_t adv_data[] = {
+        // AD Structure 1: Flag
+        (2),  // 0: field length
+        BGLIB_GAP_AD_TYPE_FLAGS,  // 1: field type (0x01)
+        (6),  // 2: data
+        // AD Structure 2: Complete local name
+        (26),  // 3: field length 0x1A
+        (255),  // 4: field type (0xFF)
+        (76),  // 5: company ID[0] 0x4C
+        (0),   // 6: company ID[1] 0x00
+        (2),   // 7: Beacon Type[0] 0x02
+        (21),  // 8: Beacon Type[1] 0x15
+
+        // UUID
+        uuid_bytes[0], 
+        uuid_bytes[1],
+        uuid_bytes[2],
+        uuid_bytes[3],
+        uuid_bytes[4],
+        uuid_bytes[5],
+        uuid_bytes[6],
+        uuid_bytes[7],
+        uuid_bytes[8],
+        uuid_bytes[9],
+        uuid_bytes[10],
+        uuid_bytes[11],
+        uuid_bytes[12],
+        uuid_bytes[13],
+        uuid_bytes[14],
+        uuid_bytes[15],
+
+        // Major
+        (major >> 8) & 0xFF,
+        major & 0xFF,
+
+        // Minor
+        (minor >> 8) & 0xFF,
+        minor & 0xFF,
+
+        (-65)  // Measured Power
+    };
+
+
+    // Register advertising packet
+    uint8_t stLen = sizeof(adv_data);
+    ble112.ble_cmd_le_gap_set_adv_data(SCAN_RSP_ADVERTISING_PACKETS, stLen, adv_data);
+    while (ble112.checkActivity(1000));
+    // index = 0  LE_GAP_SCANNABLE_NON_CONNECTABLE / LE_GAP_UNDIRECTED_CONNECTABLE
+    ble112.ble_cmd_le_gap_start_advertising(0, LE_GAP_USER_DATA, LE_GAP_SCANNABLE_NON_CONNECTABLE);
+    while (ble112.checkActivity(1000));
+}
+
+void sleepBLE() {
+    ble112.ble_cmd_le_gap_stop_advertising(0);
+    while (ble112.checkActivity());
+    ble112.ble_cmd_system_halt(1);
+    while (ble112.checkActivity());
+    digitalWrite(BLE_WAKEUP, LOW);
+    delay(500);
+}
+
+void wakeupBLE() {
+    digitalWrite(BLE_WAKEUP, HIGH);
+    delay(500);
+    ble112.ble_cmd_system_halt(0);
+    while (ble112.checkActivity());
+    ble112.ble_cmd_le_gap_set_adv_parameters(400, 800, 7);
+    while (ble112.checkActivity(1000));
 }
 
 //=====================================================================
