@@ -86,9 +86,8 @@ float HM1 = 80.0; // Hygrometer and other measurements value
 //------------------------------
 float dataLight;
 
-//------------------------------
-// BLE
-//------------------------------
+
+// BLEのState
 bool bBLEconnect = false;
 bool bBLEsendData = false;
 volatile bool bSystemBootBle = false;
@@ -106,12 +105,111 @@ void setupPort() {
   digitalWrite(BLE_WAKEUP, HIGH); // BLE Wakeup
 }
 
+// void intTimer(HardwareTimer*){      // STM32 Core 1.7.0
+void intTimer(void) { // STM32 Core 1.9.0
+    bInterval = true;
+}
+
 void setupTimerInt() {
     HardwareTimer *timer2 = new HardwareTimer(TIM2);
 
     timer2->setOverflow(LOOP_INTERVAL, MICROSEC_FORMAT); // 125ms
     timer2->attachInterrupt(intTimer);
     timer2->resume();
+}
+
+// BLEの設定
+void setupBLE() {
+    uint8 stLen;
+    uint8 adv_data[31];
+
+    // set up internal status handlers (these are technically optional)
+    ble112.onBusy = onBusy;
+    ble112.onIdle = onIdle;
+    ble112.onTimeout = onTimeout;
+    // ONLY enable these if you are using the <wakeup_pin> parameter in your
+    // firmware's hardware.xml file BLE module must be woken up before sending
+    // any UART data
+
+    // set up BGLib response handlers (called almost immediately after sending
+    // commands) (these are also technicaly optional)
+
+    // set up BGLib event handlers
+    /* [gatt_server] */
+    ble112.ble_evt_gatt_server_attribute_value = my_evt_gatt_server_attribute_value; /* [BGLib] */
+    /* [le_connection] */
+    ble112.ble_evt_le_connection_opend = my_evt_le_connection_opend; /* [BGLib] */
+    ble112.ble_evt_le_connection_closed = my_evt_le_connection_closed; /* [BGLib] */
+    /* [system] */
+    ble112.ble_evt_system_boot = my_evt_system_boot; /* [BGLib] */
+
+    ble112.ble_evt_system_awake = my_evt_system_awake;
+    ble112.ble_rsp_system_get_bt_address = my_rsp_system_get_bt_address;
+
+    uint8_t tm = 0;
+    Serialble.begin(9600);
+    while (!Serialble && tm < 150) { // Wait for Serial to start Timeout 1.5s
+        tm++;
+        delay(10);
+    }
+
+    tm = 0;
+    while (!bSystemBootBle && tm < 150) { // Waiting for BLE to start
+        ble112.checkActivity(100);
+        tm++;
+        delay(10);
+    }
+
+    /* setting */
+    /* [set Advertising Data] */
+    uint8 ad_data[21] = {
+        (2),                     // field length
+        BGLIB_GAP_AD_TYPE_FLAGS, // field type (0x01)
+        (6),                     // data
+        (1),                     // field length (1は仮の初期値)
+        BGLIB_GAP_AD_TYPE_LOCALNAME_COMPLETE // field type (0x09)
+    };
+
+    
+    size_t lenStr2 = strDeviceName.length();
+
+    ad_data[3] = (lenStr2 + 1); // field length
+    uint8 u8Index;
+    for (u8Index = 0; u8Index < lenStr2; u8Index++) {
+        ad_data[5 + u8Index] = strDeviceName.charAt(u8Index);
+    }
+
+    stLen = (5 + lenStr2);
+
+    // ble112.ble_cmd_le_gap_bt5_set_adv_data(0,SCAN_RSP_ADVERTISING_PACKETS,
+    // stLen, ad_data);
+    ble112.ble_cmd_le_gap_set_adv_data(SCAN_RSP_ADVERTISING_PACKETS, stLen, ad_data);
+
+    while (ble112.checkActivity(1000))
+        ; /* Receive check */
+    delay(20);
+
+    /* interval_min :   40ms( =   64 x 0.625ms ) */
+    // ble112.ble_cmd_le_gap_bt5_set_adv_parameters( 0, 64, 1600, 7, 0 );/*
+    // [BGLIB] <handle> <interval_min> <interval_max> <channel_map>
+    // <report_scan>*/
+    /* interval_max : 1000ms( = 1600 x 0.625ms ) */
+    ble112.ble_cmd_le_gap_set_adv_parameters(
+        64, 1600, 7); /* [BGLIB] <interval_min> <interval_max> <channel_map> */
+
+    while (ble112.checkActivity(1000))
+        ; /* [BGLIB] Receive check */
+
+    /* start */
+    //    ble112.ble_cmd_le_gap_bt5_set_mode(0,LE_GAP_USER_DATA,LE_GAP_UNDIRECTED_CONNECTABLE,0,2);
+    //    ble112.ble_cmd_le_gap_set_mode(LE_GAP_USER_DATA,LE_GAP_UNDIRECTED_CONNECTABLE);
+    //    ble112.ble_cmd_le_gap_start_advertising(0,
+    //    LE_GAP_GENERAL_DISCOVERABLE, LE_GAP_UNDIRECTED_CONNECTABLE);     //
+    //    index = 0
+    ble112.ble_cmd_le_gap_start_advertising(
+        0, LE_GAP_USER_DATA, LE_GAP_UNDIRECTED_CONNECTABLE); // index = 0
+    while (ble112.checkActivity(1000))
+        ; /* Receive check */
 }
 
 void setup() {
@@ -144,67 +242,12 @@ void setup() {
 
 
 
-//---------------------------------------------------------------------
-// Initial settings for each device
-//---------------------------------------------------------------------
 
-//====================================================================
-// Loop
-//=====================================================================
-//---------------------------------------------------------------------
-// Main loop
-//---------------------------------------------------------------------
-void loop() {
-    //-----------------------------------------------------
-    // Timer interval Loop once in 125ms
-    //-----------------------------------------------------
-    if(ibeacon){
-        StartiBeaconAdvData();
-
-        Serial.println(F("Start advertise"));
-        Serial.flush();
-
-        // Continue Advertising (during that STM32 sleeps.)
-        LowPower.deepSleep(WAKE_INTERVAL * 1000);
-        Serial.println(F("Sleep BLE"));
-        sleepBLE();
-        Serial.println(F("Sleep STM32"));
-        Serial.println(F(">>> Sleep >>>"));
-        Serial.flush();
-        LowPower.deepSleep(SLEEP_INTERVAL * 1000);
-        Serial.println(F("Wakeup STM32"));
-        wakeupBLE();
-        Serial.println(F("Wakeup BLE"));
-        Serial.println(F("<<< Wake up <<<"));
-    }
-    else{
-        if (bInterval == true) {
-            bInterval = false;
-
-            //--------------------------------------------
-            loopCounter(); // loop counter
-            //--------------------------------------------
-            // Run once in 1s
-            //--------------------------------------------
-            if (event1s == true) {
-                event1s = false;
-                bt_sendData(); // Data send
-            }
-        }
-        loopBleRcv();
-    }
-}
-//---------------------------------------------------------------------
-// Counter
-// Count the number of loops in the main loop and turn on sensor data
-// acquisition and BLE transmission at 1-second intervals
-//---------------------------------------------------------------------
+// Loop counter
 void loopCounter() {
     iLoop1s += 1;
 
-    //--------------------
     // 1s period
-    //--------------------
     if (iLoop1s >= 8) { // 125ms x 8 = 1s
         iLoop1s = 0;
 
@@ -216,11 +259,8 @@ void loopCounter() {
     }
 }
 
-//---------------------------------------------------------------------
-// Send sensor data
-// Convert sensor data into a string to be sent to Central and send the data to
-// BLE Leaf.
-//---------------------------------------------------------------------
+// GATTのデータ送信
+// 現状はHelloを送信しているだけ
 void bt_sendData() {
     char sendData[40];
     uint8 sendLen;
@@ -231,145 +271,19 @@ void bt_sendData() {
     while (ble112.checkActivity(1000))
         ;
 }
-//====================================================================
 
-//==============================================
-// Interrupt
-//==============================================
-
-//----------------------------------------------
-// Timer INT
-// Timer interrupt function
-//----------------------------------------------
-// void intTimer(HardwareTimer*){      // STM32 Core 1.7.0
-void intTimer(void) { // STM32 Core 1.9.0
-    bInterval = true;
-}
-
-//=====================================================================
-// BLE
-//=====================================================================
-//-----------------------------------------------
-//  Setup BLE
-//-----------------------------------------------
-void setupBLE() {
-    uint8 stLen;
-    uint8 adv_data[31];
-
-    // set up internal status handlers (these are technically optional)
-    ble112.onBusy = onBusy;
-    ble112.onIdle = onIdle;
-    ble112.onTimeout = onTimeout;
-    // ONLY enable these if you are using the <wakeup_pin> parameter in your
-    // firmware's hardware.xml file BLE module must be woken up before sending
-    // any UART data
-
-    // set up BGLib response handlers (called almost immediately after sending
-    // commands) (these are also technicaly optional)
-
-    // set up BGLib event handlers
-    /* [gatt_server] */
-    ble112.ble_evt_gatt_server_attribute_value =
-        my_evt_gatt_server_attribute_value; /* [BGLib] */
-    /* [le_connection] */
-    ble112.ble_evt_le_connection_opend =
-        my_evt_le_connection_opend; /* [BGLib] */
-    ble112.ble_evt_le_connection_closed =
-        my_evt_le_connection_closed; /* [BGLib] */
-    /* [system] */
-    ble112.ble_evt_system_boot = my_evt_system_boot; /* [BGLib] */
-
-    ble112.ble_evt_system_awake = my_evt_system_awake;
-    ble112.ble_rsp_system_get_bt_address = my_rsp_system_get_bt_address;
-
-    uint8_t tm = 0;
-    Serialble.begin(9600);
-    while (!Serialble && tm < 150) { // Wait for Serial to start Timeout 1.5s
-        tm++;
-        delay(10);
-    }
-
-    tm = 0;
-    while (!bSystemBootBle && tm < 150) { // Waiting for BLE to start
-        ble112.checkActivity(100);
-        tm++;
-        delay(10);
-    }
-
-    /* setting */
-    /* [set Advertising Data] */
-    uint8 ad_data[21] = {
-        (2),                     // field length
-        BGLIB_GAP_AD_TYPE_FLAGS, // field type (0x01)
-        (6),                     // data
-        (1),                     // field length (1は仮の初期値)
-        BGLIB_GAP_AD_TYPE_LOCALNAME_COMPLETE // field type (0x09)
-    };
-
-    /*  */
-    size_t lenStr2 = strDeviceName.length();
-
-    ad_data[3] = (lenStr2 + 1); // field length
-    uint8 u8Index;
-    for (u8Index = 0; u8Index < lenStr2; u8Index++) {
-        ad_data[5 + u8Index] = strDeviceName.charAt(u8Index);
-    }
-
-    /*   */
-    stLen = (5 + lenStr2);
-
-    // ble112.ble_cmd_le_gap_bt5_set_adv_data(0,SCAN_RSP_ADVERTISING_PACKETS,
-    // stLen, ad_data);
-    ble112.ble_cmd_le_gap_set_adv_data(SCAN_RSP_ADVERTISING_PACKETS, stLen,
-                                       ad_data);
-
-    while (ble112.checkActivity(1000))
-        ; /* Receive check */
-    delay(20);
-
-    /* interval_min :   40ms( =   64 x 0.625ms ) */
-    // ble112.ble_cmd_le_gap_bt5_set_adv_parameters( 0, 64, 1600, 7, 0 );/*
-    // [BGLIB] <handle> <interval_min> <interval_max> <channel_map>
-    // <report_scan>*/
-    /* interval_max : 1000ms( = 1600 x 0.625ms ) */
-    ble112.ble_cmd_le_gap_set_adv_parameters(
-        64, 1600, 7); /* [BGLIB] <interval_min> <interval_max> <channel_map> */
-
-    while (ble112.checkActivity(1000))
-        ; /* [BGLIB] Receive check */
-
-    /* start */
-    //    ble112.ble_cmd_le_gap_bt5_set_mode(0,LE_GAP_USER_DATA,LE_GAP_UNDIRECTED_CONNECTABLE,0,2);
-    //    ble112.ble_cmd_le_gap_set_mode(LE_GAP_USER_DATA,LE_GAP_UNDIRECTED_CONNECTABLE);
-    //    ble112.ble_cmd_le_gap_start_advertising(0,
-    //    LE_GAP_GENERAL_DISCOVERABLE, LE_GAP_UNDIRECTED_CONNECTABLE);     //
-    //    index = 0
-    ble112.ble_cmd_le_gap_start_advertising(
-        0, LE_GAP_USER_DATA, LE_GAP_UNDIRECTED_CONNECTABLE); // index = 0
-    while (ble112.checkActivity(1000))
-        ; /* Receive check */
-    /*  */
-}
-
-//-----------------------------------------
-// If data is sent from the BLE, acquire the data
-// and perform processing according to the acquired data.
-//-----------------------------------------
 void loopBleRcv(void) {
     // keep polling for new data from BLE
     ble112.checkActivity(0); /* Receive check */
 
-    /*  */
     if (ble_state == BLE_STATE_STANDBY) {
         bBLEconnect = false; /* [BLE] connection state */
     } else if (ble_state == BLE_STATE_ADVERTISING) {
         bBLEconnect = false; /* [BLE] connection state */
     } else if (ble_state == BLE_STATE_CONNECTED_SLAVE) {
-        /*  */
         bBLEconnect = true; /* [BLE] connection state */
     }
 }
-
 void uuidToBytes(const char* uuid, uint8_t* bytes) {
     int len = strlen(uuid);
     int j = 0;
@@ -383,9 +297,7 @@ void uuidToBytes(const char* uuid, uint8_t* bytes) {
     }
 }
 
-//-----------------------------------------------
-// アドバタイズするデータの設定
-//-----------------------------------------------
+// iBeaconのアドバタイズデータを設定
 void StartiBeaconAdvData() {
     // UUIDをstrからbyteに変換
     uint8_t uuid_bytes[16];
@@ -467,24 +379,57 @@ void wakeupBLE() {
     while (ble112.checkActivity(1000));
 }
 
-//=====================================================================
-// INTERNAL BGLIB CLASS CALLBACK FUNCTIONS
-//=====================================================================
-//-----------------------------------------------
+void loop() {
+    // Timer interval Loop once in 125ms
+    if(ibeacon){
+        StartiBeaconAdvData();
+
+        Serial.println(F("Start advertise"));
+        Serial.flush();
+
+        // Continue Advertising (during that STM32 sleeps.)
+        LowPower.deepSleep(WAKE_INTERVAL * 1000);
+        Serial.println(F("Sleep BLE"));
+        sleepBLE();
+        Serial.println(F("Sleep STM32"));
+        Serial.println(F(">>> Sleep >>>"));
+        Serial.flush();
+        LowPower.deepSleep(SLEEP_INTERVAL * 1000);
+        Serial.println(F("Wakeup STM32"));
+        wakeupBLE();
+        Serial.println(F("Wakeup BLE"));
+        Serial.println(F("<<< Wake up <<<"));
+    }
+    else{
+        if (bInterval == true) {
+            bInterval = false;
+
+            loopCounter(); // loop counter
+            // Run once in 1s
+            if (event1s == true) {
+                event1s = false;
+                bt_sendData(); // Data send
+            }
+        }
+        loopBleRcv();
+    }
+}
+
+
 // called when the module begins sending a command
 void onBusy() {
     // turn LED on when we're busy
     // digitalWrite( D13_LED, HIGH );
 }
 
-//-----------------------------------------------
+
 // called when the module receives a complete response or "system_boot" event
 void onIdle() {
     // turn LED off when we're no longer busy
     // digitalWrite( D13_LED, LOW );
 }
 
-//-----------------------------------------------
+
 // called when the parser does not read the expected response in the specified
 // time limit
 void onTimeout() {
@@ -502,11 +447,11 @@ void onTimeout() {
 #endif
 }
 
-//-----------------------------------------------
+
 // called immediately before beginning UART TX of a command
 void onBeforeTXCommand() {}
 
-//-----------------------------------------------
+
 // called immediately after finishing UART TX
 void onTXCommandComplete() {
     // allow module to return to sleep (assuming here that digital pin 5 is
@@ -515,9 +460,7 @@ void onTXCommandComplete() {
     Serial.println(F("onTXCommandComplete"));
 #endif
 }
-/*  */
 
-//-----------------------------------------------
 void my_evt_gatt_server_attribute_value(
     const struct ble_msg_gatt_server_attribute_value_evt_t *msg) {
     uint16 attribute = (uint16)msg->attribute;
@@ -553,9 +496,7 @@ void my_evt_gatt_server_attribute_value(
         ibeacon = true;
     }
 }
-/*  */
 
-//-----------------------------------------------
 void my_evt_le_connection_opend(const ble_msg_le_connection_opend_evt_t *msg) {
 #ifdef DEBUG
     Serial.print(F("###\tconnection_opend: { "));
@@ -578,11 +519,9 @@ void my_evt_le_connection_opend(const ble_msg_le_connection_opend_evt_t *msg) {
     Serial.print(msg->advertiser, HEX);
     Serial.println(" }");
 #endif
-    /*  */
     ble_state = BLE_STATE_CONNECTED_SLAVE;
 }
-/*  */
-//-----------------------------------------------
+
 void my_evt_le_connection_closed(
     const struct ble_msg_le_connection_closed_evt_t *msg) {
 #ifdef DEBUG
@@ -621,9 +560,7 @@ void my_evt_le_connection_closed(
     bBLEconnect = false; /* [BLE] connection state */
     bBLEsendData = false;
 }
-/*  */
 
-//-----------------------------------------------
 void my_evt_system_boot(const ble_msg_system_boot_evt_t *msg) {
 #ifdef DEBUG
     Serial.print("###\tsystem_boot: { ");
@@ -648,14 +585,13 @@ void my_evt_system_boot(const ble_msg_system_boot_evt_t *msg) {
     ble_state = BLE_STATE_ADVERTISING;
 }
 
-//-----------------------------------------------
+
 void my_evt_system_awake(void) {
     ble112.ble_cmd_system_halt(0);
     while (ble112.checkActivity(1000))
         ;
 }
 
-//-----------------------------------------------
 void my_rsp_system_get_bt_address(
     const struct ble_msg_system_get_bt_address_rsp_t *msg) {
 #ifdef DEBUG
