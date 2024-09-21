@@ -95,12 +95,8 @@ volatile bool bSystemBootBle = false;
 
 volatile uint8_t ble_state = BLE_STATE_STANDBY;
 volatile uint8_t ble_encrypted = 0; // 0 = not encrypted, otherwise = encrypted
-volatile uint8_t ble_bonding =
-    0xFF; // 0xFF = no bonding, otherwise = bonding handle
+volatile uint8_t ble_bonding = 0xFF; // 0xFF = no bonding, otherwise = bonding handle
 
-//------------------------------
-// Battery
-//------------------------------
 float dataBatt = 0;
 
 // IOピンの入出力設定
@@ -110,9 +106,14 @@ void setupPort() {
   digitalWrite(BLE_WAKEUP, HIGH); // BLE Wakeup
 }
 
-//=====================================================================
-// setup
-//=====================================================================
+void setupTimerInt() {
+    HardwareTimer *timer2 = new HardwareTimer(TIM2);
+
+    timer2->setOverflow(LOOP_INTERVAL, MICROSEC_FORMAT); // 125ms
+    timer2->attachInterrupt(intTimer);
+    timer2->resume();
+}
+
 void setup() {
     //  delay(1000);
 
@@ -141,20 +142,7 @@ void setup() {
 #endif
 }
 
-//=====================================================================
-// Interrupt
-//=====================================================================
-//-----------------------------------------------
-// Timer interrupt (interval=125ms, int=overflow)
-// Timer interrupt setting for main loop
-//-----------------------------------------------
-void setupTimerInt() {
-    HardwareTimer *timer2 = new HardwareTimer(TIM2);
 
-    timer2->setOverflow(LOOP_INTERVAL, MICROSEC_FORMAT); // 125ms
-    timer2->attachInterrupt(intTimer);
-    timer2->resume();
-}
 
 //---------------------------------------------------------------------
 // Initial settings for each device
