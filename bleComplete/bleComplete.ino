@@ -561,10 +561,8 @@ void my_evt_gatt_server_attribute_value(
     Serial.println(F(" }"));
 #endif
 
-    if (rcv_data.indexOf("SND") == 0) {
-        bBLEsendData = true;
-    } else if (rcv_data.indexOf("STP") == 0) {
-        bBLEsendData = false;
+    if (rcv_data.indexOf("ibeacon") == 0) {
+        ibeacon = true;
     }
 }
 /*  */
