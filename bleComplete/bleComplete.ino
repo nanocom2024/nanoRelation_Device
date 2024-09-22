@@ -14,10 +14,11 @@ String strDeviceName = "nanoRelationDevice";
 
 // iBeaconのUUID、Major、Minor
 #define BEACON_UUID "e2c56db5-dffb-48d2-b060-d0f5a71096e0"
-#define BEACON_MAJOR 1000
-#define BEACON_MINOR 2000
 
 volatile bool ibeacon = false;
+
+volatile uint16_t ibeacon_major;
+volatile uint16_t ibeacon_minor;
 
 //-----------------------------------------------
 // Setting the transmission interval
@@ -305,8 +306,8 @@ void StartiBeaconAdvData() {
     uuidToBytes(uuid_str, uuid_bytes);
 
     // MajorとMinorを設定
-    uint16_t major = BEACON_MAJOR;
-    uint16_t minor = BEACON_MINOR;
+    uint16_t major = ibeacon_major;
+    uint16_t minor = ibeacon_minor;
 
     // Advertising data; 25byte MAX
     uint8_t adv_data[] = {
@@ -461,6 +462,7 @@ void onTXCommandComplete() {
 #endif
 }
 
+// 通信を受信したときのやつ
 void my_evt_gatt_server_attribute_value(
     const struct ble_msg_gatt_server_attribute_value_evt_t *msg) {
     uint16 attribute = (uint16)msg->attribute;
@@ -492,7 +494,13 @@ void my_evt_gatt_server_attribute_value(
     Serial.println(F(" }"));
 #endif
 
-    if (rcv_data.indexOf("ibeacon") == 0) {
+    // "major,minor"の形式で受信したデータを分割
+    int pos = rcv_data.indexOf(",");
+    if (pos > 0) {
+        String strMajor = rcv_data.substring(0, pos);
+        String strMinor = rcv_data.substring(pos + 1);
+        ibeacon_major = strMajor.toInt();
+        ibeacon_minor = strMinor.toInt();
         ibeacon = true;
     }
 }
