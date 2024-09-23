@@ -354,6 +354,7 @@ void StartiBeaconAdvData() {
 
 
     // Register advertising packet
+    Serial.println(F("Start iBeacon"));
     uint8_t stLen = sizeof(adv_data);
     ble112.ble_cmd_le_gap_set_adv_data(SCAN_RSP_ADVERTISING_PACKETS, stLen, adv_data);
     while (ble112.checkActivity(1000));
@@ -541,19 +542,7 @@ void my_evt_le_connection_closed(
     Serial.println(F(" }"));
 #endif
 
-    // after disconnection, resume advertising as discoverable/connectable (with
-    // user-defined advertisement data)
-    //    ble112.ble_cmd_le_gap_start_advertising(1,
-    //    LE_GAP_GENERAL_DISCOVERABLE, LE_GAP_UNDIRECTED_CONNECTABLE);
-    //    ble112.ble_cmd_le_gap_start_advertising(0, LE_GAP_USER_DATA,
-    //    LE_GAP_UNDIRECTED_CONNECTABLE);              // index = 0
-    //    ble112.ble_cmd_le_gap_start_advertising(0,
-    //    LE_GAP_GENERAL_DISCOVERABLE, LE_GAP_UNDIRECTED_CONNECTABLE);   //
-    //    index = 0
-    //     ble112.ble_cmd_le_gap_set_mode(LE_GAP_GENERAL_DISCOVERABLE,
-    //     LE_GAP_UNDIRECTED_CONNECTABLE );
-    ble112.ble_cmd_le_gap_set_mode(LE_GAP_USER_DATA,
-                                   LE_GAP_UNDIRECTED_CONNECTABLE);
+    ble112.ble_cmd_le_gap_set_mode(LE_GAP_USER_DATA, LE_GAP_UNDIRECTED_CONNECTABLE);
 
     while (ble112.checkActivity(1000))
         ;
