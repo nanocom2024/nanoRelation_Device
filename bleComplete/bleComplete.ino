@@ -163,24 +163,50 @@ void setupBLE() {
 
     /* setting */
     /* [set Advertising Data] */
-    uint8 ad_data[21] = {
-        (2),                     // field length
-        BGLIB_GAP_AD_TYPE_FLAGS, // field type (0x01)
-        (6),                     // data
-        (1),                     // field length (1は仮の初期値)
-        BGLIB_GAP_AD_TYPE_LOCALNAME_COMPLETE // field type (0x09)
+    uint8 ad_data[52] = {
+        (2),                                                    // field length
+        BGLIB_GAP_AD_TYPE_FLAGS,                                // field type 
+        (6),
     };
 
-    
-    size_t lenStr2 = strDeviceName.length();
+    stLen = 3;
 
-    ad_data[3] = (lenStr2 + 1); // field length
-    uint8 u8Index;
-    for (u8Index = 0; u8Index < lenStr2; u8Index++) {
-        ad_data[5 + u8Index] = strDeviceName.charAt(u8Index);
-    }
-
-    stLen = (5 + lenStr2);
+    ad_data[stLen] = (17);
+    stLen++;
+    ad_data[stLen] = 0x07;
+    stLen++;
+    ad_data[stLen] = 0xeb;
+    stLen++;
+    ad_data[stLen] = 0x53;
+    stLen++;
+    ad_data[stLen] = 0x2d;
+    stLen++;
+    ad_data[stLen] = 0x21;
+    stLen++;
+    ad_data[stLen] = 0xd4;
+    stLen++;
+    ad_data[stLen] = 0xe1;
+    stLen++;
+    ad_data[stLen] = 0xe1;
+    stLen++;
+    ad_data[stLen] = 0xcb;
+    stLen++;
+    ad_data[stLen] = 0x28;
+    stLen++;
+    ad_data[stLen] = 0x9a;
+    stLen++;
+    ad_data[stLen] = 0x00;
+    stLen++;
+    ad_data[stLen] = 0x8a;
+    stLen++;
+    ad_data[stLen] = 0x70;
+    stLen++;
+    ad_data[stLen] = 0x15;
+    stLen++;
+    ad_data[stLen] = 0x2f;
+    stLen++;
+    ad_data[stLen] = 0x44;
+    stLen++;
 
     // ble112.ble_cmd_le_gap_bt5_set_adv_data(0,SCAN_RSP_ADVERTISING_PACKETS,
     // stLen, ad_data);
