@@ -147,6 +147,8 @@ void setupBLE() {
     ble112.ble_evt_system_awake = my_evt_system_awake;
     ble112.ble_rsp_system_get_bt_address = my_rsp_system_get_bt_address;
 
+    ble112.ble_evt_gatt_server_user_read_request = my_msg_gatt_server_user_read_request_evt_t;
+
     uint8_t tm = 0;
     Serialble.begin(9600);
     while (!Serialble && tm < 150) { // Wait for Serial to start Timeout 1.5s
@@ -163,7 +165,7 @@ void setupBLE() {
 
     /* setting */
     /* [set Advertising Data] */
-    uint8 ad_data[52] = {
+    uint8 ad_data[64] = {
         (2),                                                    // field length
         BGLIB_GAP_AD_TYPE_FLAGS,                                // field type 
         (6),
@@ -207,6 +209,24 @@ void setupBLE() {
     stLen++;
     ad_data[stLen] = 0x44;
     stLen++;
+
+
+    ad_data[stLen] = (6);
+    stLen++;
+    ad_data[stLen] = BGLIB_GAP_AD_TYPE_LOCALNAME_COMPLETE;
+    stLen++;
+
+    ad_data[stLen] = 'n';
+    stLen++;
+    ad_data[stLen] = 'a';
+    stLen++;
+    ad_data[stLen] = 'n';
+    stLen++;
+    ad_data[stLen] = 'o';
+    stLen++;
+    ad_data[stLen] = 'R';
+    stLen++;
+    
 
     // ble112.ble_cmd_le_gap_bt5_set_adv_data(0,SCAN_RSP_ADVERTISING_PACKETS,
     // stLen, ad_data);
@@ -297,6 +317,16 @@ void bt_sendData() {
         1, 0x000C, sendLen, (const uint8 *)sendData);
     while (ble112.checkActivity(1000))
         ;
+}
+
+void bt_read(){
+  char sendData[40];
+  uint8 sendLen;
+  sendLen = sprintf(sendData, "read\n");
+  ble112.ble_cmd_gatt_server_send_user_read_response(
+    1, 0x000C, 0, sendLen, (const uint8 *)sendData);
+  while (ble112.checkActivity(1000))
+    ;
 }
 
 void loopBleRcv(void) {
@@ -436,7 +466,7 @@ void loop() {
             // Run once in 1s
             if (event1s == true) {
                 event1s = false;
-                bt_sendData(); // Data send
+                // bt_sendData(); // Data send
             }
         }
         loopBleRcv();
@@ -446,6 +476,7 @@ void loop() {
 
 // called when the module begins sending a command
 void onBusy() {
+  // Serial.println("onBusy");
     // turn LED on when we're busy
     // digitalWrite( D13_LED, HIGH );
 }
@@ -453,6 +484,7 @@ void onBusy() {
 
 // called when the module receives a complete response or "system_boot" event
 void onIdle() {
+  // Serial.println("onIdle");
     // turn LED off when we're no longer busy
     // digitalWrite( D13_LED, LOW );
 }
@@ -461,6 +493,7 @@ void onIdle() {
 // called when the parser does not read the expected response in the specified
 // time limit
 void onTimeout() {
+  Serial.println("onTimeout");
     // set state to ADVERTISING
     ble_state = BLE_STATE_ADVERTISING;
 
@@ -477,11 +510,14 @@ void onTimeout() {
 
 
 // called immediately before beginning UART TX of a command
-void onBeforeTXCommand() {}
+void onBeforeTXCommand() {
+  Serial.println("onBeforeTXCommand");
+}
 
 
 // called immediately after finishing UART TX
 void onTXCommandComplete() {
+  Serial.println("onTXCommandComplete");
     // allow module to return to sleep (assuming here that digital pin 5 is
     // connected to the BLE wake-up pin)
 #ifdef DEBUG
@@ -492,6 +528,7 @@ void onTXCommandComplete() {
 // 通信を受信したときのやつ
 void my_evt_gatt_server_attribute_value(
     const struct ble_msg_gatt_server_attribute_value_evt_t *msg) {
+      Serial.println("my_evt_gatt_server_attribute_value");
     uint16 attribute = (uint16)msg->attribute;
     uint16 offset = 0;
     uint8 value_len = msg->value.len;
@@ -533,6 +570,7 @@ void my_evt_gatt_server_attribute_value(
 }
 
 void my_evt_le_connection_opend(const ble_msg_le_connection_opend_evt_t *msg) {
+  Serial.println("my_evt_le_connection_opend");
 #ifdef DEBUG
     Serial.print(F("###\tconnection_opend: { "));
     Serial.print(F("address: "));
@@ -555,10 +593,23 @@ void my_evt_le_connection_opend(const ble_msg_le_connection_opend_evt_t *msg) {
     Serial.println(" }");
 #endif
     ble_state = BLE_STATE_CONNECTED_SLAVE;
+
+    uint8 write_data[4] = {
+      '1',
+      '2',
+      '3',
+      '4'
+    };
+
+
+    Serial.println("ble_cmd_gatt_server_write_attribute_value");
+    ble112.ble_cmd_gatt_server_write_attribute_value(0x000C, 0, 4, write_data);
+    while (ble112.checkActivity(1000));
 }
 
 void my_evt_le_connection_closed(
     const struct ble_msg_le_connection_closed_evt_t *msg) {
+      Serial.println("my_evt_le_connection_closed");
 #ifdef DEBUG
     Serial.print(F("###\tconnection_closed: { "));
     Serial.print(F("reason: "));
@@ -585,6 +636,7 @@ void my_evt_le_connection_closed(
 }
 
 void my_evt_system_boot(const ble_msg_system_boot_evt_t *msg) {
+  Serial.println("my_evt_system_boot");
 #ifdef DEBUG
     Serial.print("###\tsystem_boot: { ");
     Serial.print("major: ");
@@ -610,6 +662,7 @@ void my_evt_system_boot(const ble_msg_system_boot_evt_t *msg) {
 
 
 void my_evt_system_awake(void) {
+  Serial.println("my_evt_system_awake");
     ble112.ble_cmd_system_halt(0);
     while (ble112.checkActivity(1000))
         ;
@@ -617,6 +670,7 @@ void my_evt_system_awake(void) {
 
 void my_rsp_system_get_bt_address(
     const struct ble_msg_system_get_bt_address_rsp_t *msg) {
+      Serial.println("my_rsp_system_get_bt_address");
 #ifdef DEBUG
     Serial.print("###\tsystem_get_bt_address: { ");
     Serial.print("address: ");
@@ -633,4 +687,9 @@ void my_rsp_system_get_bt_address(
     sprintf(cAddr, "Device name is Leaf_A_#%05d ", addr);
     Serial.println(cAddr);
 #endif
+}
+
+void my_msg_gatt_server_user_read_request_evt_t(
+  const ble_msg_gatt_server_user_read_request_evt_t *msg) {
+  Serial.println("my_ble_msg_gatt_server_user_read_request_evt_t");
 }
