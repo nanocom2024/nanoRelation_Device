@@ -99,6 +99,14 @@ volatile uint8_t ble_bonding = 0xFF; // 0xFF = no bonding, otherwise = bonding h
 
 float dataBatt = 0;
 
+void generateRandomString(uint8 *outputData, int stringLength){
+  char *letters = "abcdefghijklmnopqrstuvwxyz0123456789";
+
+  for(int i = 0; i < stringLength; i++){
+    outputData[i] = letters[random(36)];
+  }
+}
+
 // IOピンの入出力設定
 // 接続するリーフに合わせて設定する
 void setupPort() {
@@ -604,15 +612,17 @@ void my_evt_le_connection_opend(const ble_msg_le_connection_opend_evt_t *msg) {
 #endif
     ble_state = BLE_STATE_CONNECTED_SLAVE;
 
-    int uid = random(1, 1000000000);
-
     uint8 write_data[10];
 
-    // uidを10桁にし、charに変換ののち、write_dataに格納
-    String strUid = String(uid);
-    strUid.toCharArray((char *)write_data, 10);
+    generateRandomString(write_data, 10);
 
-    Serial.println(strUid);
+    // uidを10桁にし、charに変換ののち、write_dataに格納
+
+    Serial.print("write_data: ");
+    for (int i = 0; i < 10; i++) {
+        Serial.print(write_data[i]);
+    }
+    Serial.print("\n");
 
 
     Serial.println("ble_cmd_gatt_server_write_attribute_value");
