@@ -6,8 +6,8 @@
 #define DEBUG
 
 // スリープ時間と送信時間
-#define SLEEP_INTERVAL (3)
-#define WAKE_INTERVAL  (5)
+#define SLEEP_INTERVAL (1)
+#define WAKE_INTERVAL  (1)
 
 // BLEでアドバタイズするデバイス名
 String strDeviceName = "nanoRelationDevice";
@@ -604,16 +604,19 @@ void my_evt_le_connection_opend(const ble_msg_le_connection_opend_evt_t *msg) {
 #endif
     ble_state = BLE_STATE_CONNECTED_SLAVE;
 
-    uint8 write_data[4] = {
-      '1',
-      '2',
-      '3',
-      '7'
-    };
+    int uid = random(1, 1000000000);
+
+    uint8 write_data[10];
+
+    // uidを10桁にし、charに変換ののち、write_dataに格納
+    String strUid = String(uid);
+    strUid.toCharArray((char *)write_data, 10);
+
+    Serial.println(strUid);
 
 
     Serial.println("ble_cmd_gatt_server_write_attribute_value");
-    ble112.ble_cmd_gatt_server_write_attribute_value(0x000C, 0, 4, write_data);
+    ble112.ble_cmd_gatt_server_write_attribute_value(0x000C, 0, 10, write_data);
     while (ble112.checkActivity(1000));
 }
 
