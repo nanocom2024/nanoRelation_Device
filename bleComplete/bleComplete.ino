@@ -365,6 +365,11 @@ void StartiBeaconAdvData() {
     uint16_t major = ibeacon_major;
     uint16_t minor = ibeacon_minor;
 
+    Serial.print("major: ");
+    Serial.println(major);
+    Serial.print("minor: ");
+    Serial.println(minor);
+
     // Advertising data; 25byte MAX
     uint8_t adv_data[] = {
         // AD Structure 1: Flag
@@ -567,6 +572,11 @@ void my_evt_gatt_server_attribute_value(
         ibeacon_minor = strMinor.toInt();
         ibeacon = true;
     }
+
+    if(ibeacon) {
+      ble112.ble_cmd_le_connection_close(1);
+      while (ble112.checkActivity(1000));
+    }
 }
 
 void my_evt_le_connection_opend(const ble_msg_le_connection_opend_evt_t *msg) {
@@ -598,7 +608,7 @@ void my_evt_le_connection_opend(const ble_msg_le_connection_opend_evt_t *msg) {
       '1',
       '2',
       '3',
-      '4'
+      '7'
     };
 
 
