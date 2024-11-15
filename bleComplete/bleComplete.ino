@@ -439,10 +439,15 @@ void StartiBeaconAdvData() {
 }
 
 void sleepBLE() {
+    Serial.println(F("BLE \t gap stop"));
     ble112.ble_cmd_le_gap_stop_advertising(0);
+    Serial.println(F("BLE \t check"));
     while (ble112.checkActivity());
+    Serial.println(F("BLE \t system halt"));
     ble112.ble_cmd_system_halt(1);
+    Serial.println(F("BLE \t check"));
     while (ble112.checkActivity());
+    Serial.println(F("BLE \t digital write"));
     digitalWrite(BLE_WAKEUP, LOW);
     delay(500);
 }
