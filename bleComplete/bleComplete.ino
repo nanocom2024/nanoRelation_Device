@@ -584,19 +584,35 @@ void my_evt_gatt_server_attribute_value(
 
     // "major,minor"の形式で受信したデータを分割
     int pos = rcv_data.indexOf(",");
+    Serial.println(rcv_data);
+    
+    // ,があるか
     if (pos > 0) {
         String strMajor = rcv_data.substring(0, pos);
         String strMinor = rcv_data.substring(pos + 1);
+        pos = strMinor.indexOf(",");
+        ibeacon = true;
+        // minorの後ろにもう一つ,があるか
+        if (pos > 0) {
+            String option = strMinor.substring(pos + 1);
+            strMinor = strMinor.substring(0, pos);
+            Serial.print("option: ");
+            Serial.println(option);
+            // optionがlostの場合、迷子モードにする
+            if (option == "lost") {
+                Serial.println("Lost Child Mode");
+                ibeacon = false;
+                lostChild = true;
+            }
+        }
+        Serial.print("major: ");
+        Serial.println(strMajor);
+        Serial.print("minor: ");
+        Serial.println(strMinor);
         ibeacon_major = strMajor.toInt();
         ibeacon_minor = strMinor.toInt();
-        ibeacon = true;
     }
 
-    // (major, minor, "lost") で最後にlostがいるか
-    if (rcv_data == "lost") {
-        ibeacon = false;
-        lostChild = true;
-    }
 
     if(ibeacon) {
       ble112.ble_cmd_le_connection_close(1);
