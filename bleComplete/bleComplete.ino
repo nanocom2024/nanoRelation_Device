@@ -11,9 +11,14 @@
 
 // iBeaconのUUID
 #define BEACON_UUID "e2c56db5-dffb-48d2-b060-d0f5a71096e0"
+// 迷子検知用のiBeaconUUID
+#define LOST_BEACON_UUID "c19244bc-9390-41a7-9496-6a1ea96f5603"  // 要変更
 
 // GATTとiBeaconモード切り替えのBool
 volatile bool ibeacon = false;
+
+// 迷子検知モードのフラグ
+volatile bool lostChild = false;
 
 volatile uint16_t ibeacon_major;
 volatile uint16_t ibeacon_minor;
@@ -365,6 +370,9 @@ void StartiBeaconAdvData() {
     // UUIDをstrからbyteに変換
     uint8_t uuid_bytes[16];
     char* uuid_str = BEACON_UUID;
+    if (lostChild) {
+        uuid_str = LOST_BEACON_UUID;
+    }
     uuidToBytes(uuid_str, uuid_bytes);
 
     // MajorとMinorを設定
@@ -431,10 +439,15 @@ void StartiBeaconAdvData() {
 }
 
 void sleepBLE() {
+    Serial.println(F("BLE \t gap stop"));
     ble112.ble_cmd_le_gap_stop_advertising(0);
+    Serial.println(F("BLE \t check"));
     while (ble112.checkActivity());
+    Serial.println(F("BLE \t system halt"));
     ble112.ble_cmd_system_halt(1);
+    Serial.println(F("BLE \t check"));
     while (ble112.checkActivity());
+    Serial.println(F("BLE \t digital write"));
     digitalWrite(BLE_WAKEUP, LOW);
     delay(500);
 }
@@ -571,13 +584,35 @@ void my_evt_gatt_server_attribute_value(
 
     // "major,minor"の形式で受信したデータを分割
     int pos = rcv_data.indexOf(",");
+    Serial.println(rcv_data);
+    
+    // ,があるか
     if (pos > 0) {
         String strMajor = rcv_data.substring(0, pos);
         String strMinor = rcv_data.substring(pos + 1);
+        pos = strMinor.indexOf(",");
+        ibeacon = true;
+        // minorの後ろにもう一つ,があるか
+        if (pos > 0) {
+            String option = strMinor.substring(pos + 1);
+            strMinor = strMinor.substring(0, pos);
+            Serial.print("option: ");
+            Serial.println(option);
+            // optionがlostの場合、迷子モードにする
+            if (option == "lost") {
+                Serial.println("Lost Child Mode");
+                ibeacon = false;
+                lostChild = true;
+            }
+        }
+        Serial.print("major: ");
+        Serial.println(strMajor);
+        Serial.print("minor: ");
+        Serial.println(strMinor);
         ibeacon_major = strMajor.toInt();
         ibeacon_minor = strMinor.toInt();
-        ibeacon = true;
     }
+
 
     if(ibeacon) {
       ble112.ble_cmd_le_connection_close(1);
@@ -654,6 +689,11 @@ void my_evt_le_connection_closed(
     /*  */
     bBLEconnect = false; /* [BLE] connection state */
     bBLEsendData = false;
+
+    // 迷子モードがオンの時、iBeacon発信開始
+    if (lostChild) {
+        ibeacon = true;
+    }
 }
 
 void my_evt_system_boot(const ble_msg_system_boot_evt_t *msg) {
