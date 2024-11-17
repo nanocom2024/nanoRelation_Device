@@ -430,6 +430,12 @@ void StartiBeaconAdvData() {
         (-65)  // Measured Power
     };
 
+    Serial.print("adv data:");
+    for (int i = 0; i < sizeof(adv_data); i++) {
+        Serial.print(adv_data[i], HEX);
+        Serial.print(" ");
+    }
+    Serial.println();
 
     // Register advertising packet
     Serial.println(F("Start iBeacon"));
