@@ -105,6 +105,9 @@ float dataBatt = 0;
 void generateRandomString(uint8 *outputData, int stringLength){
   char *letters = "abcdefghijklmnopqrstuvwxyz0123456789";
 
+  // random関数の初期化
+  randomSeed(millis());
+
   for(int i = 0; i < stringLength; i++){
     outputData[i] = letters[random(36)];
   }
