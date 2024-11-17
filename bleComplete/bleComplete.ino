@@ -652,8 +652,9 @@ void my_evt_le_connection_opend(const ble_msg_le_connection_opend_evt_t *msg) {
     // uidを10桁にし、charに変換ののち、write_dataに格納
 
     Serial.print("write_data: ");
+    // write_dataをcharで表示
     for (int i = 0; i < 10; i++) {
-        Serial.print(write_data[i]);
+        Serial.print((char)write_data[i]);
     }
     Serial.print("\n");
 
