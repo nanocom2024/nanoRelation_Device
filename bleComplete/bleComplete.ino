@@ -682,8 +682,13 @@ void my_evt_le_connection_closed(
     Serial.print((uint16_t)msg->reason, HEX);
     Serial.print(F(", connection: "));
     Serial.print(msg->connection, HEX);
-    Serial.println(F(" }"));
+    Serial.println(F(" }"));    
 #endif
+    if (msg->reason == 0x208) {
+        Serial.println("Connection closed forcibly.");
+    } else if (msg->reason == 0x213) {
+        Serial.println("Connection closed manually.");
+    }
 
     ble112.ble_cmd_le_gap_set_mode(LE_GAP_USER_DATA, LE_GAP_UNDIRECTED_CONNECTABLE);
 
