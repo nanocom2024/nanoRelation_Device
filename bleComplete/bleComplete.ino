@@ -462,7 +462,7 @@ void loop() {
             // Run once in 1s
             if (event1s == true) {
                 event1s = false;
-                // bt_sendData(); // Data send
+                bt_sendData(); // Data send
             }
         }
         loopBleRcv();
