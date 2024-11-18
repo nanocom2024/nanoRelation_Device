@@ -3,9 +3,6 @@
 #include "STM32LowPower.h"
 #include "TBGLib.h"  // BLE
 
-#define SERIAL_MONITOR
-#define DEBUG
-
 // iBeaconのSleepとWakeの時間
 #define SLEEP_INTERVAL (3)
 #define WAKE_INTERVAL (5)
@@ -270,11 +267,10 @@ void setup() {
     //  delay(1000);
 
     Serial.begin(115200);  // UART 115200bps
-#ifdef SERIAL_MONITOR
     Serial.println(F(""));
     Serial.println(F("========================================="));
     Serial.println(F("setup start"));
-#endif
+
 
     LowPower.begin();
     setupPort();
@@ -285,12 +281,10 @@ void setup() {
 
     setupTimerInt();  // Timer inverval start
 
-#ifdef SERIAL_MONITOR
     Serial.println(F(""));
     Serial.println("=========================================");
     Serial.println(F("loop start"));
     Serial.println(F(""));
-#endif
 }
 
 // Loop counter
@@ -475,22 +469,10 @@ void loop() {
     }
 }
 
-// called when the module begins sending a command
-void onBusy() {
-    // Serial.println("onBusy");
-    // turn LED on when we're busy
-    // digitalWrite( D13_LED, HIGH );
-}
+void onBusy() {}
 
-// called when the module receives a complete response or "system_boot" event
-void onIdle() {
-    // Serial.println("onIdle");
-    // turn LED off when we're no longer busy
-    // digitalWrite( D13_LED, LOW );
-}
+void onIdle() {}
 
-// called when the parser does not read the expected response in the specified
-// time limit
 void onTimeout() {
     Serial.println("onTimeout");
     // set state to ADVERTISING
@@ -502,23 +484,12 @@ void onTimeout() {
     /*  */
     bBLEconnect = false; /* [BLE] connection state */
     bBLEsendData = false;
-#ifdef DEBUG
     Serial.println(F("on time out"));
-#endif
 }
 
-// called immediately before beginning UART TX of a command
-void onBeforeTXCommand() { Serial.println("onBeforeTXCommand"); }
+void onBeforeTXCommand() {}
 
-// called immediately after finishing UART TX
-void onTXCommandComplete() {
-    Serial.println("onTXCommandComplete");
-    // allow module to return to sleep (assuming here that digital pin 5 is
-    // connected to the BLE wake-up pin)
-#ifdef DEBUG
-    Serial.println(F("onTXCommandComplete"));
-#endif
-}
+void onTXCommandComplete() {}
 
 // 通信を受信したときのやつ
 void my_evt_gatt_server_attribute_value(const struct ble_msg_gatt_server_attribute_value_evt_t *msg) {
@@ -533,7 +504,7 @@ void my_evt_gatt_server_attribute_value(const struct ble_msg_gatt_server_attribu
         rcv_data += (char)(msg->value.data[i]);
     }
 
-#ifdef DEBUG
+
     Serial.print(F("###\tgatt_server_attribute_value: { "));
     Serial.print(F("connection: "));
     Serial.print(msg->connection, HEX);
@@ -550,7 +521,7 @@ void my_evt_gatt_server_attribute_value(const struct ble_msg_gatt_server_attribu
     Serial.print(rcv_data);
 
     Serial.println(F(" }"));
-#endif
+
 
     // "major,minor"の形式で受信したデータを分割
     int pos = rcv_data.indexOf(",");
@@ -590,8 +561,6 @@ void my_evt_gatt_server_attribute_value(const struct ble_msg_gatt_server_attribu
 }
 
 void my_evt_le_connection_opend(const ble_msg_le_connection_opend_evt_t *msg) {
-    Serial.println("my_evt_le_connection_opend");
-#ifdef DEBUG
     Serial.print(F("###\tconnection_opend: { "));
     Serial.print(F("address: "));
     // this is a "bd_addr" data type, which is a 6-byte uint8_t array
@@ -610,7 +579,8 @@ void my_evt_le_connection_opend(const ble_msg_le_connection_opend_evt_t *msg) {
     Serial.print(", advertiser: ");
     Serial.print(msg->advertiser, HEX);
     Serial.println(" }");
-#endif
+
+
     ble_state = BLE_STATE_CONNECTED_SLAVE;
 
     uint8 write_data[10];
@@ -631,18 +601,19 @@ void my_evt_le_connection_opend(const ble_msg_le_connection_opend_evt_t *msg) {
 }
 
 void my_evt_le_connection_closed(const struct ble_msg_le_connection_closed_evt_t *msg) {
-    Serial.println("my_evt_le_connection_closed");
-#ifdef DEBUG
     Serial.print(F("###\tconnection_closed: { "));
     Serial.print(F("reason: "));
     Serial.print((uint16_t)msg->reason, HEX);
     Serial.print(F(", connection: "));
     Serial.print(msg->connection, HEX);
     Serial.println(F(" }"));
-#endif
+
+
     if (msg->reason == 0x208) {
+        // コネクションが強制切断
         Serial.println("Connection closed forcibly.");
     } else if (msg->reason == 0x213) {
+        // コネクションが手動切断
         Serial.println("Connection closed manually.");
     }
 
@@ -667,8 +638,6 @@ void my_evt_le_connection_closed(const struct ble_msg_le_connection_closed_evt_t
 }
 
 void my_evt_system_boot(const ble_msg_system_boot_evt_t *msg) {
-    Serial.println("my_evt_system_boot");
-#ifdef DEBUG
     Serial.print("###\tsystem_boot: { ");
     Serial.print("major: ");
     Serial.print(msg->major, HEX);
@@ -683,7 +652,7 @@ void my_evt_system_boot(const ble_msg_system_boot_evt_t *msg) {
     Serial.print(", hw: ");
     Serial.print(msg->hw, HEX);
     Serial.println(" }");
-#endif
+
 
     bSystemBootBle = true;
 
@@ -692,29 +661,26 @@ void my_evt_system_boot(const ble_msg_system_boot_evt_t *msg) {
 }
 
 void my_evt_system_awake(void) {
-    Serial.println("my_evt_system_awake");
     ble112.ble_cmd_system_halt(0);
     while (ble112.checkActivity(1000));
 }
 
 void my_rsp_system_get_bt_address(const struct ble_msg_system_get_bt_address_rsp_t *msg) {
-    Serial.println("my_rsp_system_get_bt_address");
-#ifdef DEBUG
     Serial.print("###\tsystem_get_bt_address: { ");
     Serial.print("address: ");
     for (int i = 0; i < 6; i++) {
         Serial.print(msg->address.addr[i], HEX);
     }
     Serial.println(" }");
-#endif
 
-#ifdef SERIAL_MONITOR
+
     unsigned short addr = 0;
     char cAddr[30];
     addr = msg->address.addr[0] + (msg->address.addr[1] * 0x100);
     sprintf(cAddr, "Device name is Leaf_A_#%05d ", addr);
     Serial.println(cAddr);
-#endif
 }
 
-void my_msg_gatt_server_user_read_request_evt_t(const ble_msg_gatt_server_user_read_request_evt_t *msg) { Serial.println("my_ble_msg_gatt_server_user_read_request_evt_t"); }
+void my_msg_gatt_server_user_read_request_evt_t(const ble_msg_gatt_server_user_read_request_evt_t *msg) {
+    Serial.println("my_ble_msg_gatt_server_user_read_request_evt_t");
+}
