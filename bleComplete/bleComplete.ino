@@ -619,14 +619,13 @@ void my_evt_le_connection_opend(const ble_msg_le_connection_opend_evt_t *msg) {
 
     // uidを10桁にし、charに変換ののち、write_dataに格納
 
-    Serial.print("write_data: ");
+    Serial.print("device uid: ");
     // write_dataをcharで表示
     for (int i = 0; i < 10; i++) {
         Serial.print((char)write_data[i]);
     }
     Serial.print("\n");
 
-    Serial.println("ble_cmd_gatt_server_write_attribute_value");
     ble112.ble_cmd_gatt_server_write_attribute_value(0x000C, 0, 10, write_data);
     while (ble112.checkActivity(1000));
 }
