@@ -12,7 +12,7 @@
 // iBeaconのUUID
 #define BEACON_UUID "e2c56db5-dffb-48d2-b060-d0f5a71096e0"
 // 迷子検知用のiBeaconUUID
-#define LOST_BEACON_UUID "c19244bc-9390-41a7-9496-6a1ea96f5603"  // 要変更
+#define LOST_BEACON_UUID "e2c56db5-dffb-48d2-b060-d0f5a71096e1"  // 要変更
 
 // GATTとiBeaconモード切り替えのBool
 volatile bool ibeacon = false;
