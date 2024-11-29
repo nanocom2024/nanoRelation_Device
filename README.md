@@ -9,9 +9,9 @@ Leafony STM32
 
 ## 使用リーフ一覧
 - AP03 STM32 MCU
-- AV01 CR2032
 - AZ01 USB
 - AC02 BLE Sugar
+- AV01 CR2032
 
 ## 使用ライブラリ
 - [TBGLib.h](https://github.com/Leafony/TBGLib)
